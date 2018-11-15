@@ -70,35 +70,47 @@ public class FirstFit extends Memory {
 		}
 		freeSegmentList.add(i, newNode);					// Create a new mark for empty space size in memory
 
-//		Node previousNode, nextNode;
-//		if(freeSegmentList.get(i-1) != null) {
-//			previousNode = freeSegmentList.get(i-1);
-//		}
-//		if(freeSegmentList.get(i+1) != null) {
-//			nextNode = freeSegmentList.get(i+1);
-//		}
-//		// Now we have to de-fragment the memory
-//		// To do so, we have to check previous free address and next free address
-//
-//		// Check if there is free space before and after or only before the newly
-//		// freed space. If it is true, merge space
-//		if( ( previousNode.getAddress() + (previousNode.getSegmentLength()-1)) == (newNode.getAddress()-1) ) {
-//			if((previousNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength())) ) {
-//				// Both space before and after is free
-//				previousNode.setSegmentLength(previousNode.getSegmentLength() + nextNode.getSegmentLength() + newNode.getSegmentLength());
-//				freeSegmentList.remove(newNode);
-//				freeSegmentList.remove(nextNode);
-//			} else {
-//				//Only space before is free
-//				previousNode.setSegmentLength(previousNode.getSegmentLength() + newNode.getSegmentLength());
-//				freeSegmentList.remove(newNode);
-//			}
-//		}
-//		// If only space after is free
-//		if(previousNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength())) {
-//			newNode.setSegmentLength(nextNode.getSegmentLength() + newNode.getSegmentLength());
-//			freeSegmentList.remove(nextNode);
-//		}
+		Node previousNode, nextNode;
+		if(((i-1) >= 0) && (i >= freeSegmentList.size() + 1)) {
+			//Check if there is a node before and after the new node
+			if ((freeSegmentList.get(i - 1) != null) && (freeSegmentList.get(i + 1) != null)) {
+				previousNode = freeSegmentList.get(i - 1);
+				nextNode = freeSegmentList.get(i + 1);
+				// Check if there is free space before and after or only before the newly
+				// freed space. If it is true, merge space
+				if ((previousNode.getAddress() + (previousNode.getSegmentLength() - 1)) == (newNode.getAddress() - 1)) {
+					if ((previousNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength()))) {
+						// Both space before and after is free
+						previousNode.setSegmentLength(previousNode.getSegmentLength() + nextNode.getSegmentLength() + newNode.getSegmentLength());
+						freeSegmentList.remove(newNode);
+						freeSegmentList.remove(nextNode);
+					} else {
+						//Only space before is free
+						previousNode.setSegmentLength(previousNode.getSegmentLength() + newNode.getSegmentLength());
+						freeSegmentList.remove(newNode);
+					}
+				}
+				// If only space after is free
+				if (nextNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength())) {
+					newNode.setSegmentLength(nextNode.getSegmentLength() + newNode.getSegmentLength());
+					freeSegmentList.remove(nextNode);
+				}
+			} else if (freeSegmentList.get(i - 1) != null) {
+				previousNode = freeSegmentList.get(i + 1);
+				if ((previousNode.getAddress() + (previousNode.getSegmentLength() - 1)) == (newNode.getAddress() - 1)) {
+					//Only space before is free
+					previousNode.setSegmentLength(previousNode.getSegmentLength() + newNode.getSegmentLength());
+					freeSegmentList.remove(newNode);
+				}
+			} else if (freeSegmentList.get(i + 1) != null) {
+				nextNode = freeSegmentList.get(i + 1);
+				// If only space after is free
+				if (nextNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength())) {
+					newNode.setSegmentLength(nextNode.getSegmentLength() + newNode.getSegmentLength());
+					freeSegmentList.remove(nextNode);
+				}
+			}
+		}
 	}
 	
 	/**
@@ -111,7 +123,11 @@ public class FirstFit extends Memory {
 	 */
 	@Override
 	public void printLayout() {
-		// TODO Implement this!
+		System.out.println("Free space:");
+		for(Node n : freeSegmentList) {
+			System.out.println(n.getAddress() + " - " + (n.getAddress() + n.getSegmentLength()) + " ");
+		}
+
 	}
 	
 	/**
