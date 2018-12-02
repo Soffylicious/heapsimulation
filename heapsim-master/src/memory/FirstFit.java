@@ -1,139 +1,165 @@
 package memory;
 
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
 
 /**
- * This memory model allocates memory cells based on the first-fit method. 
- * 
+ * This memory model allocates memory cells based on the first-fit method.
+ *
  * @author "Johan Holmberg, Malmö university"
  * @since 1.0
+ * @author Sofia Larsson
+ * @author Jessica Quach
+ * @since 2.0
  */
 public class FirstFit extends Memory {
 
-	private LinkedList<Node> freeSegmentList;
-	private HashMap<Pointer, Integer> blockMap;
-	/**
-	 * Initializes an instance of a first fit-based memory.
-	 * 
-	 * @param size The number of cells.
-	 */
-	public FirstFit(int size) {
-		super(size);
-		this.freeSegmentList = new LinkedList();
-		this.freeSegmentList.addFirst(new Node(size,0));
-		this.blockMap = new HashMap<>();
-	}
+    private LinkedList<FreeBlock> freeList;
+    private HashMap<Pointer, Integer> blockMap;
 
-	/**
-	 * Allocates a number of memory cells. 
-	 * 
-	 * @param size the number of cells to allocate.
-	 * @return The address of the first cell.
-	 */
-	@Override
-	public Pointer alloc(int size) {
-		for (int i = 0; i < freeSegmentList.size(); i++) {
-			if(freeSegmentList.get(i).getSegmentLength() >= size) {
-				Pointer pointer = new Pointer(freeSegmentList.get(i).getAddress(), this);
-				pointer.pointAt(freeSegmentList.get(i).getAddress());
-				blockMap.put(pointer, size);
-				if ( freeSegmentList.get(i).getSegmentLength() == size) {
-					freeSegmentList.remove(i);
-				} else {
-					int newSize = freeSegmentList.get(i).getSegmentLength() - size;
-					int newAddress = freeSegmentList.get(i).getAddress() + size;
-					freeSegmentList.get(i).setSegmentLength(newSize);
-					freeSegmentList.get(i).setAddress(newAddress);
-				}
-				return pointer;
-			}
-		}
-		return null;
-	}
-	
-	/**
-	 * Releases a number of data cells
-	 * 
-	 * @param p The pointer to release.
-	 */
-	@Override
-	public void release(Pointer p) {
-		int sizeToRelease = blockMap.get(p);					//Get block size of Pointer that we want to release
-		Node newNode = new Node(sizeToRelease, p.pointsAt());
+    /**
+     * Initializes an instance of a first fit-based memory.
+     *
+     * @param size The number of cells.
+     */
+    public FirstFit(int size) {
+        super(size);
+        this.freeList = new LinkedList<>();
+        this.freeList.addFirst(new FreeBlock(size, 0));
+        this.blockMap = new HashMap<>();
+    }
 
-		//Put the new node in the "right" place in the list
-		int i = 0;
-		while(p.pointsAt() > freeSegmentList.get(i).getAddress()) {
-			i++;
-		}
-		freeSegmentList.add(i, newNode);					// Create a new mark for empty space size in memory
+    /**
+     * Allocates a number of memory cells.
+     *
+     * @param size the number of cells to allocate.
+     * @return The address of the first cell.
+     */
+    @Override
+    public Pointer alloc(int size) {
+        for (int i = 0; i < freeList.size(); i++) {
+            if (freeList.get(i).getSegmentLength() >= size) {
+                Pointer pointer = new Pointer(freeList.get(i).getAddress(), this);
+                pointer.pointAt(freeList.get(i).getAddress());
+                blockMap.put(pointer, size);
+                if (freeList.get(i).getSegmentLength() == size) {
+                    freeList.remove(i);
+                } else {
+                    int newSize = freeList.get(i).getSegmentLength() - size;
+                    int newAddress = freeList.get(i).getAddress() + size;
+                    freeList.get(i).setSegmentLength(newSize);
+                    freeList.get(i).setAddress(newAddress);
+                }
+                return pointer;
+            } else {
+                System.out.println("Sorry, no space for that");
+            }
+        }
+        return null;
+    }
 
-		Node previousNode, nextNode;
-		if(((i-1) >= 0) && (i >= freeSegmentList.size() + 1)) {
-			//Check if there is a node before and after the new node
-			if ((freeSegmentList.get(i - 1) != null) && (freeSegmentList.get(i + 1) != null)) {
-				previousNode = freeSegmentList.get(i - 1);
-				nextNode = freeSegmentList.get(i + 1);
-				// Check if there is free space before and after or only before the newly
-				// freed space. If it is true, merge space
-				if ((previousNode.getAddress() + (previousNode.getSegmentLength() - 1)) == (newNode.getAddress() - 1)) {
-					if ((previousNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength()))) {
-						// Both space before and after is free
-						previousNode.setSegmentLength(previousNode.getSegmentLength() + nextNode.getSegmentLength() + newNode.getSegmentLength());
-						freeSegmentList.remove(newNode);
-						freeSegmentList.remove(nextNode);
-					} else {
-						//Only space before is free
-						previousNode.setSegmentLength(previousNode.getSegmentLength() + newNode.getSegmentLength());
-						freeSegmentList.remove(newNode);
-					}
-				}
-				// If only space after is free
-				if (nextNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength())) {
-					newNode.setSegmentLength(nextNode.getSegmentLength() + newNode.getSegmentLength());
-					freeSegmentList.remove(nextNode);
-				}
-			} else if (freeSegmentList.get(i - 1) != null) {
-				previousNode = freeSegmentList.get(i + 1);
-				if ((previousNode.getAddress() + (previousNode.getSegmentLength() - 1)) == (newNode.getAddress() - 1)) {
-					//Only space before is free
-					previousNode.setSegmentLength(previousNode.getSegmentLength() + newNode.getSegmentLength());
-					freeSegmentList.remove(newNode);
-				}
-			} else if (freeSegmentList.get(i + 1) != null) {
-				nextNode = freeSegmentList.get(i + 1);
-				// If only space after is free
-				if (nextNode.getAddress() == (newNode.getAddress() + newNode.getSegmentLength())) {
-					newNode.setSegmentLength(nextNode.getSegmentLength() + newNode.getSegmentLength());
-					freeSegmentList.remove(nextNode);
-				}
-			}
-		}
-	}
-	
-	/**
-	 * Prints a simple model of the memory. Example:
-	 * 
-	 * |    0 -  110 | Allocated
-	 * |  111 -  150 | Free
-	 * |  151 -  999 | Allocated
-	 * | 1000 - 1024 | Free
-	 */
-	@Override
-	public void printLayout() {
-		System.out.println("Free space:");
-		for(Node n : freeSegmentList) {
-			System.out.println(n.getAddress() + " - " + (n.getAddress() + n.getSegmentLength()) + " ");
-		}
+    /**
+     * Releases a number of data cells
+     *
+     * @param p The pointer to release.
+     */
+    @Override
+    public void release(Pointer p) {
+        int releasedSize = blockMap.get(p);    // Get block size of Pointer that we want to release
+        int releasedAddress = p.pointsAt();    // Get the address at which the block begins
+        blockMap.remove(p);
+        FreeBlock newFreeBlock = new FreeBlock(releasedSize, releasedAddress);
+        FreeBlock previousFreeBlock = null, nextFreeBlock = null;
+        //Put the new node in the "right" place in the list
 
-	}
-	
-	/**
-	 * Compacts the memory space.
-	 */
-	public void compact() {
-		// TODO Implement this!
-	}
+        // Find nodes that are before and after the new node
+        if (!freeList.isEmpty()) {
+            for (FreeBlock freeBlock : freeList) {
+                if (releasedAddress < freeBlock.getAddress()) {
+                    freeList.add(freeList.indexOf(freeBlock), newFreeBlock);
+                    nextFreeBlock = freeBlock;
+                    break;
+                } else {
+                    previousFreeBlock = freeBlock;
+                }
+            }
+        } else {
+            freeList.add(newFreeBlock);  // Make new node if the list is empty
+        }
+
+        // If there are nodes both BEFORE AND AFTER the new node
+        if ((previousFreeBlock != null) && (nextFreeBlock != null)) {
+
+            //If both before and after nodes can be merged
+            if ((previousFreeBlock.getAddress() + previousFreeBlock.getSegmentLength()) == newFreeBlock.getAddress()) {
+                if (((newFreeBlock.getAddress() + newFreeBlock.getSegmentLength()) == nextFreeBlock.getAddress())) {
+                    previousFreeBlock.setSegmentLength(previousFreeBlock.getSegmentLength() + nextFreeBlock.getSegmentLength() + newFreeBlock.getSegmentLength());
+                    freeList.remove(newFreeBlock);
+                    freeList.remove(nextFreeBlock);
+                } else {
+                    previousFreeBlock.setSegmentLength(previousFreeBlock.getSegmentLength() + newFreeBlock.getSegmentLength());
+                    freeList.remove(newFreeBlock);
+                }
+            }
+            // If only space after is free
+            if ((newFreeBlock.getAddress() + newFreeBlock.getSegmentLength()) == nextFreeBlock.getAddress()) {
+                newFreeBlock.setSegmentLength(nextFreeBlock.getSegmentLength() + newFreeBlock.getSegmentLength());
+                freeList.remove(nextFreeBlock);
+            }
+
+            // If there is only a node BEFORE the new node
+        } else if (previousFreeBlock != null) {
+            if ((previousFreeBlock.getAddress() + previousFreeBlock.getSegmentLength()) == newFreeBlock.getAddress()) {
+                previousFreeBlock.setSegmentLength(previousFreeBlock.getSegmentLength() + newFreeBlock.getSegmentLength());
+                freeList.remove(newFreeBlock);
+            }
+            // If there is only a node AFTER the new node
+        } else if (nextFreeBlock != null) {
+            if (((newFreeBlock.getAddress() + newFreeBlock.getSegmentLength()) == nextFreeBlock.getAddress())) {
+                newFreeBlock.setSegmentLength(nextFreeBlock.getSegmentLength() + newFreeBlock.getSegmentLength());
+                freeList.remove(nextFreeBlock);
+            }
+        }
+
+    }
+
+    /**
+     * Prints a simple model of the memory. Example:
+     * <p>
+     * |    0 -  110 | Allocated
+     * |  111 -  150 | Free
+     * |  151 -  999 | Allocated
+     * | 1000 - 1024 | Free
+     */
+    @Override
+    public void printLayout() {
+        Iterator it = blockMap.entrySet().iterator();
+        int allocStart, allocEnd;
+
+        System.out.println("Free");
+        for (FreeBlock freeBlock : freeList) {
+            System.out.println(freeBlock.getAddress() + " - " + (freeBlock.getAddress() + (freeBlock.getSegmentLength() - 1)) + " ");
+        }
+        System.out.println(" ");
+        System.out.println("Allocated");
+        if (it.hasNext()) {
+            while (it.hasNext()) {
+                Map.Entry pair = (Map.Entry) it.next();
+                allocStart = ((Pointer) pair.getKey()).pointsAt();
+                allocEnd = allocStart + ((int) pair.getValue()) - 1;
+                System.out.println(allocStart + " - " + allocEnd);
+            }
+        } else {
+            System.out.println("No allocated memory space");
+        }
+    }
+
+    /**
+     * Compacts the memory space.
+     */
+    public void compact() {
+        // TODO Implement this!
+    }
 }

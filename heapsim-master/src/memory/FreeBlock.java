@@ -1,10 +1,10 @@
 package memory;
 
-public class Node {
+public class FreeBlock {
     private int segmentLength;
     private int address;
 
-    Node(int segmentLength, int address) {
+    FreeBlock(int segmentLength, int address) {
         this.segmentLength = segmentLength;
         this.address = address;
     }
